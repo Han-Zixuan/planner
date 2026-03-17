@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日计划</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg2: #f5f5f3;
+    --bg3: #eeede8;
+    --text: #1a1a18;
+    --text2: #6b6b66;
+    --text3: #a8a8a2;
+    --border: rgba(0,0,0,0.10);
+    --border2: rgba(0,0,0,0.18);
+    --border3: rgba(0,0,0,0.28);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --blue-bg: #E6F1FB; --blue-text: #0C447C; --blue-mid: #378ADD;
+    --green-bg: #EAF3DE; --green-text: #27500A; --green-mid: #639922;
+    --amber-bg: #FAEEDA; --amber-text: #633806; --amber-mid: #BA7517;
+    --red-bg: #FCEBEB; --red-text: #791F1F; --red-mid: #E24B4A;
+    --orange-bg: #FAECE7; --orange-text: #993C1D; --orange-mid: #D85A30;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --bg2: #242422; --bg3: #2c2c2a;
+      --text: #f0efe8; --text2: #a8a8a0; --text3: #666660;
+      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.14); --border3: rgba(255,255,255,0.22);
+      --blue-bg: #0c2a44; --blue-text: #85B7EB; --blue-mid: #378ADD;
+      --green-bg: #162a08; --green-text: #97C459; --green-mid: #639922;
+      --amber-bg: #2c1e06; --amber-text: #EF9F27; --amber-mid: #BA7517;
+      --red-bg: #2a0f0f; --red-text: #F09595; --red-mid: #E24B4A;
+      --orange-bg: #2e1208; --orange-text: #F0997B; --orange-mid: #D85A30;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg3); font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; color: var(--text); }
+
+  /* ── App shell ── */
+  #app { max-width: 960px; margin: 0 auto; min-height: 100vh; background: var(--bg); }
+
+  /* ── Nav ── */
+  nav { border-bottom: 0.5px solid var(--border2); display: flex; align-items: center; padding: 0 1.25rem; gap: 0; position: sticky; top: 0; background: var(--bg); z-index: 50; }
+  .nav-logo { font-size: 14px; font-weight: 500; color: var(--text); padding: 14px 0; margin-right: 1.5rem; white-space: nowrap; }
+  .nav-tabs { display: flex; gap: 0; flex: 1; }
+  .nav-tab { padding: 14px 16px; font-size: 13px; color: var(--text2); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -0.5px; transition: color .15s; white-space: nowrap; }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--text); border-bottom-color: var(--text); }
+
+  /* ── Page container ── */
+  .page { display: none; padding: 1.25rem; }
+  .page.active { display: block; }
+
+  /* ── Shared top-bar ── */
+  .top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 8px; }
+  .date-nav { display: flex; align-items: center; gap: 10px; }
+  .date-nav button, .month-nav button { background: none; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 5px 12px; cursor: pointer; color: var(--text); font-size: 13px; }
+  .date-nav button:hover, .month-nav button:hover { background: var(--bg2); }
+  .date-label, .month-label { font-size: 15px; font-weight: 500; color: var(--text); }
+  .month-label { min-width: 90px; text-align: center; }
+  .mode-tabs { display: flex; gap: 6px; }
+  .mtab { padding: 5px 13px; border-radius: var(--radius); border: 0.5px solid var(--border2); background: none; cursor: pointer; font-size: 13px; color: var(--text2); }
+  .mtab.active { background: var(--text); color: var(--bg); border-color: transparent; }
+
+  /* ── Banners ── */
+  .lock-banner { background: var(--amber-bg); border: 0.5px solid var(--amber-mid); border-radius: var(--radius); padding: 8px 14px; font-size: 12px; color: var(--amber-text); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+  .overdue-box { background: var(--bg2); border: 0.5px solid var(--border2); border-radius: var(--radius-lg); padding: 10px 14px; margin-bottom: 1rem; }
+  .overdue-title { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .badge { font-size: 11px; padding: 1px 8px; border-radius: 20px; }
+  .badge-red { background: var(--orange-bg); color: var(--orange-text); }
+  .overdue-list { display: flex; flex-wrap: wrap; gap: 5px; }
+  .ov-chip { background: var(--bg); border: 0.5px solid var(--border2); border-radius: 20px; padding: 3px 10px; font-size: 12px; display: flex; align-items: center; gap: 5px; color: var(--text); }
+  .chip-cat { font-size: 10px; color: var(--text3); }
+
+  /* ── Daily grid ── */
+  .grid-header { display: grid; grid-template-columns: 80px repeat(3, minmax(0,1fr)); gap: 1px; margin-bottom: 1px; }
+  .col-head { font-size: 12px; font-weight: 500; text-align: center; padding: 6px 4px; border-radius: 6px 6px 0 0; }
+  .col-head.study { background: var(--blue-bg); color: var(--blue-text); }
+  .col-head.fit   { background: var(--green-bg); color: var(--green-text); }
+  .col-head.life  { background: var(--amber-bg); color: var(--amber-text); }
+  .grid-body { display: grid; grid-template-columns: 80px repeat(3, minmax(0,1fr)); gap: 1px; background: var(--border); border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow: hidden; border: 0.5px solid var(--border); }
+  .time-cell { background: var(--bg2); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text3); padding: 0 3px; min-height: 72px; white-space: pre; text-align: center; line-height: 1.5; }
+  .task-cell { background: var(--bg); padding: 5px; display: flex; flex-direction: column; gap: 3px; min-height: 72px; position: relative; }
+  .task-cell.locked { background: var(--bg2); }
+  .task-cell:not(.locked):hover .add-btn { opacity: 1; }
+  .task-item { display: flex; align-items: flex-start; gap: 4px; background: var(--bg2); border-radius: 5px; padding: 4px 6px; font-size: 12px; color: var(--text); line-height: 1.4; }
+  .task-item.study-item { border-left: 2px solid var(--blue-mid); }
+  .task-item.fit-item   { border-left: 2px solid var(--green-mid); }
+  .task-item.life-item  { border-left: 2px solid var(--amber-mid); }
+  .task-item.ov-item    { border-left: 2px solid var(--orange-mid); }
+  .task-text { flex: 1; }
+  .done-btn { flex-shrink: 0; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border2); background: none; cursor: pointer; margin-top: 1px; }
+  .done-btn:hover { background: var(--green-bg); border-color: var(--green-mid); }
+  .fail-btn { flex-shrink: 0; width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--red-mid); background: none; cursor: pointer; margin-top: 1px; font-size: 9px; color: var(--red-text); display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .fail-btn:hover { background: var(--red-bg); }
+  .del-btn { flex-shrink: 0; background: none; border: none; cursor: pointer; color: var(--text3); font-size: 15px; margin-top: -1px; line-height: 1; padding: 0; }
+  .del-btn:hover { color: var(--red-mid); }
+  .add-btn { opacity: 0; position: absolute; bottom: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; border: 0.5px solid var(--border2); background: var(--bg); cursor: pointer; font-size: 16px; color: var(--text2); display: flex; align-items: center; justify-content: center; transition: opacity .15s; line-height: 1; }
+  .add-btn:hover { background: var(--bg2); }
+
+  /* ── Failure section ── */
+  .fail-section { margin-top: 1.25rem; border: 0.5px solid var(--red-mid); border-radius: var(--radius-lg); overflow: hidden; }
+  .fail-header { background: var(--red-bg); padding: 10px 14px; font-size: 12px; font-weight: 500; color: var(--red-text); }
+  .fail-list { padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .fail-item { background: var(--bg2); border-radius: var(--radius); padding: 8px 10px; font-size: 12px; }
+  .fail-item .fi-task { color: var(--text); font-weight: 500; margin-bottom: 3px; }
+  .fail-item .fi-reason { color: var(--text2); }
+  .fail-item .fi-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* ── Calendar ── */
+  .month-nav { display: flex; align-items: center; gap: 12px; }
+  .view-tabs { display: flex; gap: 6px; }
+  .vtab { padding: 5px 13px; border-radius: var(--radius); border: 0.5px solid var(--border2); background: none; cursor: pointer; font-size: 13px; color: var(--text2); }
+  .vtab.active { background: var(--text); color: var(--bg); border-color: transparent; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 1px; background: var(--border); border: 0.5px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .cal-dow { background: var(--bg2); text-align: center; font-size: 11px; color: var(--text3); padding: 6px 2px; font-weight: 500; }
+  .cal-day { background: var(--bg); min-height: 78px; padding: 5px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; transition: background .1s; }
+  .cal-day:hover { background: var(--bg2); }
+  .cal-day.other-month { background: var(--bg2); }
+  .cal-day.other-month .day-num { color: var(--text3); }
+  .cal-day.is-today .day-num-wrap { background: var(--text); color: var(--bg); border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+  .cal-day.selected { outline: 2px solid var(--blue-mid); outline-offset: -2px; }
+  .day-num { font-size: 12px; font-weight: 500; color: var(--text2); }
+  .day-num-wrap { font-size: 12px; font-weight: 500; color: var(--text2); width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+  .day-note-strip { font-size: 10px; color: var(--blue-text); background: var(--blue-bg); border-radius: 3px; padding: 1px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .day-dots { display: flex; gap: 2px; flex-wrap: wrap; }
+  .todo-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .dot-study { background: var(--blue-mid); }
+  .dot-fit   { background: var(--green-mid); }
+  .dot-life  { background: var(--amber-mid); }
+
+  /* ── Day panel ── */
+  .panel { border: 0.5px solid var(--border); border-radius: var(--radius-lg); margin-top: 1rem; overflow: hidden; }
+  .panel-header { padding: 12px 16px; background: var(--bg2); border-bottom: 0.5px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .panel-title { font-size: 14px; font-weight: 500; }
+  .panel-date { font-size: 12px; color: var(--text2); }
+  .panel-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .note-label { font-size: 12px; color: var(--text2); margin-bottom: 5px; }
+  .note-input { width: 100%; padding: 7px 10px; border: 0.5px solid var(--border2); border-radius: var(--radius); font-size: 13px; background: var(--bg); color: var(--text); resize: none; font-family: inherit; }
+  .note-input:focus { outline: none; border-color: var(--blue-mid); }
+  .save-btn { align-self: flex-end; padding: 5px 14px; border-radius: var(--radius); background: none; border: 0.5px solid var(--border2); font-size: 12px; cursor: pointer; color: var(--text2); }
+  .save-btn:hover { background: var(--bg2); }
+  .todo-sec-title { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+  .todo-list { display: flex; flex-direction: column; gap: 4px; }
+  .todo-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg2); border-radius: var(--radius); font-size: 13px; }
+  .cat-pill { font-size: 10px; padding: 1px 7px; border-radius: 10px; flex-shrink: 0; }
+  .pill-study { background: var(--blue-bg); color: var(--blue-text); }
+  .pill-fit   { background: var(--green-bg); color: var(--green-text); }
+  .pill-life  { background: var(--amber-bg); color: var(--amber-text); }
+  .todo-text { flex: 1; color: var(--text); }
+  .assign-btn { font-size: 11px; color: var(--text2); background: none; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 2px 8px; cursor: pointer; flex-shrink: 0; }
+  .assign-btn:hover { background: var(--bg); }
+  .assigned-badge { font-size: 10px; color: var(--blue-text); background: var(--blue-bg); border-radius: 3px; padding: 1px 5px; flex-shrink: 0; }
+  .add-todo-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .add-todo-row input, .add-todo-row select { padding: 6px 10px; border: 0.5px solid var(--border2); border-radius: var(--radius); font-size: 13px; background: var(--bg); color: var(--text); font-family: inherit; }
+  .add-todo-row input { flex: 1; min-width: 100px; }
+  .add-todo-row input:focus, .add-todo-row select:focus, .note-input:focus { outline: none; border-color: var(--blue-mid); }
+  .btn-add-todo { padding: 6px 14px; border-radius: var(--radius); background: var(--text); color: var(--bg); border: none; font-size: 13px; cursor: pointer; flex-shrink: 0; }
+  .empty-hint { font-size: 12px; color: var(--text3); text-align: center; padding: 10px 0; }
+
+  /* ── All todos view ── */
+  .all-todo-grp { margin-bottom: 1.25rem; }
+  .grp-date-label { font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+  .goto-btn { font-size: 11px; color: var(--text2); background: none; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 2px 8px; cursor: pointer; }
+  .goto-btn:hover { background: var(--bg2); }
+
+  /* ── Modal ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 200; align-items: center; justify-content: center; padding: 1rem; }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: var(--bg); border-radius: var(--radius-lg); padding: 1.25rem; width: 100%; max-width: 320px; border: 0.5px solid var(--border2); }
+  .modal-box h3 { font-size: 14px; font-weight: 500; margin-bottom: 10px; color: var(--text); }
+  .modal-box input, .modal-box select, .modal-box textarea { width: 100%; padding: 7px 10px; border: 0.5px solid var(--border2); border-radius: var(--radius); font-size: 13px; background: var(--bg); color: var(--text); margin-bottom: 8px; font-family: inherit; }
+  .modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus { outline: none; border-color: var(--blue-mid); }
+  .modal-box textarea { resize: none; }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+  .modal-btns button { padding: 6px 14px; border-radius: var(--radius); font-size: 13px; cursor: pointer; font-family: inherit; }
+  .btn-cancel { background: none; border: 0.5px solid var(--border2); color: var(--text2); }
+  .btn-ok { background: var(--text); border: none; color: var(--bg); }
+  .btn-fail-ok { background: #A32D2D; border: none; color: #fff; }
+  .modal-subtitle { font-size: 12px; color: var(--text2); margin-bottom: 10px; margin-top: -6px; }
+
+  /* ── Responsive ── */
+  @media (max-width: 520px) {
+    .grid-header, .grid-body { grid-template-columns: 54px repeat(3, minmax(0,1fr)); }
+    .time-cell { font-size: 10px; min-height: 62px; }
+    .task-cell { min-height: 62px; padding: 3px; }
+    .task-item { font-size: 11px; }
+    .cal-day { min-height: 58px; padding: 3px; }
+    .day-note-strip { display: none; }
+    nav { padding: 0 0.75rem; }
+    .nav-tab { padding: 12px 10px; font-size: 12px; }
+    .page { padding: 0.75rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <nav>
+    <span class="nav-logo">每日计划</span>
+    <div class="nav-tabs">
+      <button class="nav-tab active" onclick="showPage('daily')">日规划</button>
+      <button class="nav-tab" onclick="showPage('monthly')">月历</button>
+      <button class="nav-tab" onclick="showPage('todos')">全部待办</button>
+    </div>
+  </nav>
+
+  <!-- ════════════════════════════════
+       PAGE 1 · 日规划
+  ════════════════════════════════ -->
+  <div class="page active" id="page-daily">
+    <div class="top-bar">
+      <div class="date-nav">
+        <button id="d-prev">←</button>
+        <span class="date-label" id="d-label"></span>
+        <button id="d-next">→</button>
+      </div>
+      <div class="mode-tabs">
+        <button class="mtab active" id="tab-today" onclick="setDailyMode('today')">今日</button>
+        <button class="mtab" id="tab-tomorrow" onclick="setDailyMode('tomorrow')">计划明日</button>
+      </div>
+    </div>
+    <div id="d-lock-banner" class="lock-banner" style="display:none">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="flex-shrink:0"><rect x="3" y="6" width="8" height="6" rx="1.5" fill="currentColor" opacity=".7"/><path d="M4.5 6V4.5a2.5 2.5 0 015 0V6" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+      今日计划已锁定，无法新增或删除。可标记完成，或将无法完成的任务列入失败记录。
+    </div>
+    <div id="d-overdue" class="overdue-box" style="display:none">
+      <div class="overdue-title">昨日拖延事项 <span class="badge badge-red" id="d-overdue-count"></span></div>
+      <div class="overdue-list" id="d-overdue-list"></div>
+    </div>
+    <div class="grid-header">
+      <div class="col-head" style="background:none"></div>
+      <div class="col-head study">学习</div>
+      <div class="col-head fit">减肥</div>
+      <div class="col-head life">生活</div>
+    </div>
+    <div class="grid-body" id="d-grid"></div>
+    <div id="d-fail-section" class="fail-section" style="display:none">
+      <div class="fail-header">完成失败记录</div>
+      <div class="fail-list" id="d-fail-list"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
+       PAGE 2 · 月历
+  ════════════════════════════════ -->
+  <div class="page" id="page-monthly">
+    <div class="top-bar">
+      <div class="month-nav">
+        <button id="m-prev">←</button>
+        <span class="month-label" id="m-label"></span>
+        <button id="m-next">→</button>
+      </div>
+      <div class="view-tabs">
+        <button class="vtab active" id="vtab-cal" onclick="setMonthView('cal')">月历</button>
+        <button class="vtab" id="vtab-list" onclick="setMonthView('list')">本月待办</button>
+      </div>
+    </div>
+    <div id="m-cal-view">
+      <div class="cal-grid" id="m-cal-grid"></div>
+      <div id="m-day-panel"></div>
+    </div>
+    <div id="m-list-view" style="display:none">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">本月待办事项</span></div>
+        <div class="panel-body" id="m-all-todos"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
+       PAGE 3 · 全部待办
+  ════════════════════════════════ -->
+  <div class="page" id="page-todos">
+    <div style="margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span style="font-size:15px;font-weight:500">所有待办事项</span>
+    </div>
+    <div id="all-todos-body"></div>
+  </div>
+</div>
+
+<!-- ── Modal ── -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  DATA HELPERS
+// ═══════════════════════════════════════════
+const SLOTS = ['8:00-10:00','10:00-12:00','12:00-14:00','14:00-16:00','16:00-18:00','18:00-20:00','20:00-22:00'];
+const CATS = ['study','fit','life'];
+const CAT_CN = {study:'学习', fit:'减肥', life:'生活'};
+const WEEK_CN = ['日','一','二','三','四','五','六'];
+
+function getData() { try { return JSON.parse(localStorage.getItem('dailyplanner') || '{}'); } catch(e) { return {}; } }
+function saveData(d) { localStorage.setItem('dailyplanner', JSON.stringify(d)); }
+
+function getDay(date) {
+  const d = getData();
+  if (!d[date]) d[date] = {};
+  const day = d[date];
+  if (!day.tasks) day.tasks = {};
+  if (!day.failures) day.failures = [];
+  if (!day.todos) day.todos = [];
+  if (!day.note) day.note = '';
+  SLOTS.forEach(s => {
+    if (!day.tasks[s]) day.tasks[s] = {};
+    CATS.forEach(c => { if (!day.tasks[s][c]) day.tasks[s][c] = []; });
+  });
+  return day;
+}
+
+function saveDayData(date, obj) {
+  const d = getData(); d[date] = obj; saveData(d);
+}
+
+function fmtDate(d) { return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`; }
+function p2(n) { return String(n).padStart(2,'0'); }
+function addDays(s, n) { const d = new Date(s+'T00:00:00'); d.setDate(d.getDate()+n); return fmtDate(d); }
+function todayStr() { return fmtDate(new Date()); }
+function displayDate(s) { const d = new Date(s+'T00:00:00'); return `${d.getMonth()+1}月${d.getDate()}日 周${WEEK_CN[d.getDay()]}`; }
+
+// ═══════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════
+let currentPage = 'daily';
+function showPage(name) {
+  currentPage = name;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const tabs = document.querySelectorAll('.nav-tab');
+  const idx = ['daily','monthly','todos'].indexOf(name);
+  if (idx >= 0) tabs[idx].classList.add('active');
+  if (name === 'daily') renderDaily();
+  if (name === 'monthly') renderCal();
+  if (name === 'todos') renderAllTodos();
+}
+
+// ═══════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════
+function openModal(html, onOpen) {
+  const box = document.getElementById('modal-box');
+  box.innerHTML = html;
+  document.getElementById('modal').classList.add('open');
+  if (onOpen) onOpen(box);
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ═══════════════════════════════════════════
+//  PAGE 1 · DAILY PLANNER
+// ═══════════════════════════════════════════
+let dailyBase = todayStr();
+let dailyMode = 'today';
+
+function setDailyMode(m) {
+  dailyMode = m;
+  document.getElementById('tab-today').classList.toggle('active', m === 'today');
+  document.getElementById('tab-tomorrow').classList.toggle('active', m === 'tomorrow');
+  renderDaily();
+}
+
+function dailyActiveDate() { return dailyMode === 'today' ? dailyBase : addDays(dailyBase, 1); }
+
+function getOverdue(forDate) {
+  const prev = addDays(forDate, -1);
+  const prevDay = getDay(prev);
+  const failedSet = new Set((prevDay.failures || []).map(f => f.text + '|' + f.cat + '|' + f.slot));
+  const ov = [];
+  SLOTS.forEach(s => CATS.forEach(c => {
+    (prevDay.tasks[s]?.[c] || []).forEach(t => {
+      if (!failedSet.has(t.text+'|'+c+'|'+s)) ov.push({...t, slot:s, cat:c});
+    });
+  }));
+  return ov;
+}
+
+function renderDaily() {
+  const date = dailyActiveDate();
+  const isToday = dailyMode === 'today';
+  document.getElementById('d-label').textContent = displayDate(date) + (isToday ? ' （今日）' : ' （明日）');
+  document.getElementById('d-lock-banner').style.display = isToday ? '' : 'none';
+
+  const dayObj = getDay(date);
+  const overdue = getOverdue(date);
+
+  // overdue banner
+  const ovBox = document.getElementById('d-overdue');
+  const ovList = document.getElementById('d-overdue-list');
+  if (overdue.length > 0) {
+    ovBox.style.display = '';
+    document.getElementById('d-overdue-count').textContent = overdue.length + ' 项';
+    ovList.innerHTML = '';
+    overdue.forEach(t => {
+      const chip = document.createElement('div'); chip.className = 'ov-chip';
+      chip.innerHTML = `<span>${t.text}</span><span class="chip-cat">${CAT_CN[t.cat]}</span>`;
+      ovList.appendChild(chip);
+    });
+  } else { ovBox.style.display = 'none'; }
+
+  // grid
+  const grid = document.getElementById('d-grid');
+  grid.innerHTML = '';
+  SLOTS.forEach(slot => {
+    const tc = document.createElement('div'); tc.className = 'time-cell';
+    tc.textContent = slot.replace('-', '\n'); grid.appendChild(tc);
+    CATS.forEach(cat => {
+      const cell = document.createElement('div');
+      cell.className = 'task-cell' + (isToday ? ' locked' : '');
+      const tasks = dayObj.tasks[slot]?.[cat] || [];
+      tasks.forEach((t, i) => {
+        const item = document.createElement('div');
+        item.className = `task-item ${cat}-item${t.fromOverdue ? ' ov-item' : ''}`;
+        if (isToday) {
+          const doneB = document.createElement('button'); doneB.className = 'done-btn'; doneB.title = '标记完成';
+          doneB.onclick = () => { const obj = getDay(date); obj.tasks[slot][cat].splice(i,1); saveDayData(date,obj); renderDaily(); };
+          const failB = document.createElement('button'); failB.className = 'fail-btn'; failB.title = '列入失败'; failB.textContent = '✕';
+          failB.onclick = () => openFailModal(date, slot, cat, i, t.text);
+          item.appendChild(doneB); item.appendChild(failB);
+        } else {
+          const del = document.createElement('button'); del.className = 'del-btn'; del.textContent = '×';
+          del.onclick = () => { const obj = getDay(date); obj.tasks[slot][cat].splice(i,1); saveDayData(date,obj); renderDaily(); };
+          item.appendChild(del);
+        }
+        const span = document.createElement('span'); span.className = 'task-text'; span.textContent = t.text;
+        item.appendChild(span); cell.appendChild(item);
+      });
+      if (!isToday) {
+        const add = document.createElement('button'); add.className = 'add-btn'; add.textContent = '+';
+        add.onclick = () => openAddTaskModal(date, slot, cat, overdue);
+        cell.appendChild(add);
+      }
+      grid.appendChild(cell);
+    });
+  });
+
+  // failures
+  const failures = dayObj.failures || [];
+  const fsec = document.getElementById('d-fail-section');
+  const flist = document.getElementById('d-fail-list');
+  if (failures.length > 0) {
+    fsec.style.display = '';
+    flist.innerHTML = '';
+    failures.forEach(f => {
+      const item = document.createElement('div'); item.className = 'fail-item';
+      item.innerHTML = `<div class="fi-task">${f.text}</div><div class="fi-reason">原因：${f.reason}</div><div class="fi-meta">${CAT_CN[f.cat]} · ${f.slot}</div>`;
+      flist.appendChild(item);
+    });
+  } else { fsec.style.display = 'none'; }
+}
+
+function openAddTaskModal(date, slot, cat, overdue) {
+  const relevant = (overdue || []).filter(o => o.cat === cat);
+  const hasOverdue = relevant.length > 0;
+  openModal(`
+    <h3>添加 ${CAT_CN[cat]} 任务</h3>
+    <p class="modal-subtitle">${slot}</p>
+    <input type="text" id="m-task-inp" placeholder="任务描述…" maxlength="40">
+    ${hasOverdue ? `<select id="m-ov-sel"><option value="">— 或选昨日拖延事项 —</option>${relevant.map((o,i)=>`<option value="${i}">${o.text}</option>`).join('')}</select>` : ''}
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn-ok" id="m-add-ok">添加</button>
+    </div>
+  `, box => {
+    const inp = box.querySelector('#m-task-inp');
+    const sel = box.querySelector('#m-ov-sel');
+    inp.focus();
+    const doAdd = () => {
+      let text = inp.value.trim(), fromOverdue = false;
+      if (!text && sel && sel.value !== '') { text = relevant[parseInt(sel.value)].text; fromOverdue = true; }
+      if (!text) { inp.focus(); return; }
+      const obj = getDay(date);
+      obj.tasks[slot][cat].push({text, fromOverdue});
+      saveDayData(date, obj);
+      closeModal(); renderDaily();
+    };
+    box.querySelector('#m-add-ok').onclick = doAdd;
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+  });
+}
+
+function openFailModal(date, slot, cat, idx, text) {
+  openModal(`
+    <h3 style="color:var(--red-text)">列入完成失败</h3>
+    <p class="modal-subtitle">任务：${text}</p>
+    <textarea id="m-fail-reason" rows="3" placeholder="请说明未完成的原因（必填）…" maxlength="100"></textarea>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn-fail-ok" id="m-fail-ok">确认失败</button>
+    </div>
+  `, box => {
+    const ta = box.querySelector('#m-fail-reason');
+    ta.focus();
+    const doFail = () => {
+      const reason = ta.value.trim();
+      if (!reason) { ta.focus(); return; }
+      const obj = getDay(date);
+      obj.tasks[slot][cat].splice(idx, 1);
+      obj.failures.push({text, reason, cat, slot});
+      saveDayData(date, obj);
+      closeModal(); renderDaily();
+    };
+    box.querySelector('#m-fail-ok').onclick = doFail;
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) doFail(); });
+  });
+}
+
+document.getElementById('d-prev').onclick = () => { dailyBase = addDays(dailyBase, -1); renderDaily(); };
+document.getElementById('d-next').onclick = () => { dailyBase = addDays(dailyBase,  1); renderDaily(); };
+
+// ═══════════════════════════════════════════
+//  PAGE 2 · MONTHLY CALENDAR
+// ═══════════════════════════════════════════
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let selectedCalDate = todayStr();
+let monthView = 'cal';
+
+function setMonthView(v) {
+  monthView = v;
+  document.getElementById('vtab-cal').classList.toggle('active', v === 'cal');
+  document.getElementById('vtab-list').classList.toggle('active', v === 'list');
+  document.getElementById('m-cal-view').style.display = v === 'cal' ? '' : 'none';
+  document.getElementById('m-list-view').style.display = v === 'list' ? '' : 'none';
+  if (v === 'list') renderMonthTodos();
+}
+
+function renderCal() {
+  document.getElementById('m-label').textContent = `${calYear}年${calMonth+1}月`;
+  const grid = document.getElementById('m-cal-grid');
+  grid.innerHTML = '';
+  // header
+  ['日','一','二','三','四','五','六'].forEach(d => {
+    const h = document.createElement('div'); h.className = 'cal-dow'; h.textContent = d; grid.appendChild(h);
+  });
+  const first = new Date(calYear, calMonth, 1);
+  const last  = new Date(calYear, calMonth+1, 0);
+  const startDow = first.getDay();
+  const total = Math.ceil((startDow + last.getDate()) / 7) * 7;
+  for (let i = 0; i < total; i++) {
+    const d = new Date(calYear, calMonth, 1 + i - startDow);
+    const ds = fmtDate(d);
+    const isThis = d.getMonth() === calMonth;
+    const isToday = ds === todayStr();
+    const isSel = ds === selectedCalDate;
+    const dayObj = getDay(ds);
+    const cell = document.createElement('div');
+    cell.className = 'cal-day' + (isThis ? '' : ' other-month') + (isToday ? ' is-today' : '') + (isSel ? ' selected' : '');
+    cell.onclick = () => { selectedCalDate = ds; renderCal(); renderDayPanel(ds); };
+    // day number
+    const numWrap = document.createElement('div'); numWrap.className = 'day-num-wrap';
+    numWrap.textContent = d.getDate(); cell.appendChild(numWrap);
+    if (isThis && dayObj.note) {
+      const strip = document.createElement('div'); strip.className = 'day-note-strip'; strip.textContent = dayObj.note; cell.appendChild(strip);
+    }
+    if (isThis && dayObj.todos.length > 0) {
+      const dots = document.createElement('div'); dots.className = 'day-dots';
+      dayObj.todos.slice(0,6).forEach(t => { const dot = document.createElement('div'); dot.className = `todo-dot dot-${t.cat}`; dots.appendChild(dot); });
+      cell.appendChild(dots);
+    }
+    grid.appendChild(cell);
+  }
+  renderDayPanel(selectedCalDate);
+}
+
+function renderDayPanel(ds) {
+  const panel = document.getElementById('m-day-panel');
+  const dayObj = getDay(ds);
+  panel.innerHTML = '';
+  const wrap = document.createElement('div'); wrap.className = 'panel';
+
+  // header
+  const hdr = document.createElement('div'); hdr.className = 'panel-header';
+  hdr.innerHTML = `<span class="panel-title">日程详情</span><span class="panel-date">${displayDate(ds)}</span>`;
+  wrap.appendChild(hdr);
+
+  const body = document.createElement('div'); body.className = 'panel-body';
+
+  // note
+  const noteDiv = document.createElement('div');
+  noteDiv.innerHTML = `<div class="note-label">当日备注 / 大致计划</div>`;
+  const ta = document.createElement('textarea'); ta.className = 'note-input'; ta.rows = 2;
+  ta.placeholder = '例：今天主要备考，下午健身，晚上早睡…'; ta.value = dayObj.note || '';
+  const saveB = document.createElement('button'); saveB.className = 'save-btn'; saveB.textContent = '保存';
+  saveB.onclick = () => { const obj = getDay(ds); obj.note = ta.value.trim(); saveDayData(ds, obj); renderCal(); };
+  noteDiv.appendChild(ta); noteDiv.appendChild(saveB); body.appendChild(noteDiv);
+
+  // todos
+  const todoDiv = document.createElement('div');
+  const tTitle = document.createElement('div'); tTitle.className = 'todo-sec-title'; tTitle.textContent = '待办事项';
+  todoDiv.appendChild(tTitle);
+  const list = document.createElement('div'); list.className = 'todo-list';
+  if (dayObj.todos.length === 0) {
+    const e = document.createElement('div'); e.className = 'empty-hint'; e.textContent = '暂无待办';
+    list.appendChild(e);
+  } else {
+    dayObj.todos.forEach((t, i) => {
+      const item = document.createElement('div'); item.className = 'todo-item';
+      const pill = document.createElement('span'); pill.className = `cat-pill pill-${t.cat}`; pill.textContent = CAT_CN[t.cat];
+      const txt = document.createElement('span'); txt.className = 'todo-text'; txt.textContent = t.text;
+      item.appendChild(pill); item.appendChild(txt);
+      if (t.slot) {
+        const badge = document.createElement('span'); badge.className = 'assigned-badge'; badge.textContent = t.slot; item.appendChild(badge);
+      }
+      const aBtn = document.createElement('button'); aBtn.className = 'assign-btn';
+      aBtn.textContent = t.slot ? '修改时段' : '安排时段';
+      aBtn.onclick = () => openAssignModal(ds, i);
+      item.appendChild(aBtn);
+      const del = document.createElement('button'); del.className = 'del-btn'; del.textContent = '×';
+      del.onclick = () => { const obj = getDay(ds); obj.todos.splice(i,1); saveDayData(ds,obj); renderDayPanel(ds); renderCal(); };
+      item.appendChild(del); list.appendChild(item);
+    });
+  }
+  todoDiv.appendChild(list);
+
+  // add todo
+  const addRow = document.createElement('div'); addRow.className = 'add-todo-row';
+  const inp = document.createElement('input'); inp.type='text'; inp.placeholder='新待办事项…'; inp.maxLength=40;
+  const sel = document.createElement('select');
+  CATS.forEach(c => { const o = document.createElement('option'); o.value=c; o.textContent=CAT_CN[c]; sel.appendChild(o); });
+  const addB = document.createElement('button'); addB.className = 'btn-add-todo'; addB.textContent = '添加';
+  addB.onclick = () => {
+    const text = inp.value.trim(); if (!text) return;
+    const obj = getDay(ds); obj.todos.push({text, cat: sel.value, slot: null}); saveDayData(ds, obj);
+    inp.value = ''; renderDayPanel(ds); renderCal();
+  };
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') addB.click(); });
+  addRow.appendChild(inp); addRow.appendChild(sel); addRow.appendChild(addB);
+  todoDiv.appendChild(addRow);
+  body.appendChild(todoDiv);
+  wrap.appendChild(body);
+  panel.appendChild(wrap);
+}
+
+function openAssignModal(ds, idx) {
+  const dayObj = getDay(ds);
+  const todo = dayObj.todos[idx];
+  const options = SLOTS.map(s => `<option value="${s}"${todo.slot===s?' selected':''}>${s}</option>`).join('');
+  openModal(`
+    <h3>安排时段</h3>
+    <p class="modal-subtitle">${todo.text}</p>
+    <select id="m-assign-sel">
+      <option value="">— 暂不安排 —</option>
+      ${options}
+    </select>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn-ok" id="m-assign-ok">确认</button>
+    </div>
+  `, box => {
+    box.querySelector('#m-assign-ok').onclick = () => {
+      const slot = box.querySelector('#m-assign-sel').value;
+      const obj = getDay(ds);
+      obj.todos[idx].slot = slot || null;
+      if (slot) {
+        if (!obj.tasks[slot]) obj.tasks[slot] = {};
+        CATS.forEach(c => { if (!obj.tasks[slot][c]) obj.tasks[slot][c] = []; });
+        const t = obj.todos[idx];
+        const already = obj.tasks[slot][t.cat].some(x => x.text === t.text);
+        if (!already) obj.tasks[slot][t.cat].push({text: t.text, fromTodo: true});
+      }
+      saveDayData(ds, obj);
+      closeModal(); renderDayPanel(ds); renderCal();
+    };
+  });
+}
+
+function renderMonthTodos() {
+  const body = document.getElementById('m-all-todos');
+  body.innerHTML = '';
+  const data = getData();
+  const entries = Object.keys(data).sort().filter(date => {
+    const d = new Date(date+'T00:00:00');
+    return d.getFullYear()===calYear && d.getMonth()===calMonth;
+  });
+  let found = false;
+  entries.forEach(date => {
+    const dayObj = data[date];
+    if (!dayObj.todos || dayObj.todos.length === 0) return;
+    found = true;
+    const grp = document.createElement('div'); grp.className = 'all-todo-grp';
+    const lbl = document.createElement('div'); lbl.className = 'grp-date-label'; lbl.textContent = displayDate(date);
+    grp.appendChild(lbl);
+    const list = document.createElement('div'); list.className = 'todo-list';
+    dayObj.todos.forEach(t => {
+      const item = document.createElement('div'); item.className = 'todo-item';
+      const pill = document.createElement('span'); pill.className = `cat-pill pill-${t.cat}`; pill.textContent = CAT_CN[t.cat];
+      const txt = document.createElement('span'); txt.className = 'todo-text'; txt.textContent = t.text;
+      item.appendChild(pill); item.appendChild(txt);
+      if (t.slot) { const badge = document.createElement('span'); badge.className='assigned-badge'; badge.textContent=t.slot; item.appendChild(badge); }
+      const go = document.createElement('button'); go.className = 'goto-btn'; go.textContent = '查看';
+      go.onclick = () => { selectedCalDate = date; setMonthView('cal'); renderCal(); };
+      item.appendChild(go); list.appendChild(item);
+    });
+    grp.appendChild(list); body.appendChild(grp);
+  });
+  if (!found) { body.innerHTML = '<div class="empty-hint">本月暂无待办事项</div>'; }
+}
+
+document.getElementById('m-prev').onclick = () => { calMonth--; if (calMonth<0){calMonth=11;calYear--;} renderCal(); };
+document.getElementById('m-next').onclick = () => { calMonth++; if (calMonth>11){calMonth=0;calYear++;} renderCal(); };
+
+// ═══════════════════════════════════════════
+//  PAGE 3 · ALL TODOS
+// ═══════════════════════════════════════════
+function renderAllTodos() {
+  const body = document.getElementById('all-todos-body');
+  body.innerHTML = '';
+  const data = getData();
+  const sorted = Object.keys(data).sort();
+  let found = false;
+  sorted.forEach(date => {
+    const dayObj = data[date];
+    if (!dayObj.todos || dayObj.todos.length === 0) return;
+    found = true;
+    const grp = document.createElement('div'); grp.className = 'all-todo-grp';
+    const lbl = document.createElement('div'); lbl.className = 'grp-date-label'; lbl.textContent = displayDate(date);
+    grp.appendChild(lbl);
+    const list = document.createElement('div'); list.className = 'todo-list';
+    dayObj.todos.forEach(t => {
+      const item = document.createElement('div'); item.className = 'todo-item';
+      const pill = document.createElement('span'); pill.className = `cat-pill pill-${t.cat}`; pill.textContent = CAT_CN[t.cat];
+      const txt = document.createElement('span'); txt.className = 'todo-text'; txt.textContent = t.text;
+      item.appendChild(pill); item.appendChild(txt);
+      if (t.slot) { const badge = document.createElement('span'); badge.className='assigned-badge'; badge.textContent=t.slot; item.appendChild(badge); }
+      const go = document.createElement('button'); go.className = 'goto-btn'; go.textContent = '查看当日';
+      go.onclick = () => {
+        const d = new Date(date+'T00:00:00'); calYear=d.getFullYear(); calMonth=d.getMonth(); selectedCalDate=date;
+        showPage('monthly');
+      };
+      item.appendChild(go); list.appendChild(item);
+    });
+    grp.appendChild(list); body.appendChild(grp);
+  });
+  if (!found) { body.innerHTML = '<div class="empty-hint" style="padding:2rem 0">暂无任何待办事项</div>'; }
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+renderDaily();
+</script>
+</body>
+</html>
